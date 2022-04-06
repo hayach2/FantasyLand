@@ -10,7 +10,7 @@ from viewer import Viewer
 from skybox import Skybox
 from shader import Shader
 from textureground import groundNode
-from core import add_characters, add_animations
+from core import add_characters, add_animations, build_tree
 
 
 def main():
@@ -32,7 +32,8 @@ def main():
     terrain_shader = Shader("shaders/ground.vert", "shaders/ground.frag")
 
     add_characters(viewer, shader=skinning_shader)
-    # add_animations(viewer, shader=phong_shader)
+    build_tree(viewer, shader=phong_shader)
+    add_animations(viewer, shader=phong_shader)
     groundNode(viewer, shader=terrain_shader)
 
 

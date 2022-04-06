@@ -157,6 +157,45 @@ def load_textured_phong_mesh_skinned(file, shader, tex_file, k_a, k_d, k_s, s, d
 
     return [root_node]
 
+def multi_load_textured(file, shader, tex_file, k_a, k_d, k_s, s):
+    """ load resources from file using assimp, return list of TexturedMesh """
+    try:
+        pp = assimpcy.aiPostProcessSteps
+        flags = pp.aiProcess_Triangulate | pp.aiProcess_FlipUVs
+        scene = assimpcy.aiImportFile(file, flags)
+    except assimpcy.all.AssimpError as exception:
+        print('ERROR loading', file + ': ', exception.args[0].decode())
+        return []
+    # print("materials: ", scene.mNumMaterials)
+    # Note: embedded textures not supported at the moment
+    path = os.path.dirname(file) if os.path.dirname(file) != '' else './'
+    for index, mat in enumerate(scene.mMaterials):
+        if not tex_file and 'TEXTURE_BASE' in mat.properties:  # texture token
+            name = os.path.basename(mat.properties['TEXTURE_BASE'])
+            # search texture in file's whole subdir since path often screwed up
+            paths = os.walk(path, followlinks=True)
+            found = [os.path.join(d, f) for d, _, n in paths for f in n
+                     if name.startswith(f) or f.startswith(name)]
+            assert found, 'Cannot find texture %s in %s subtree' % (name, path)
+            tex_file = found[0]
+        if tex_file:
+            # print("Index: ", index)
+            mat.properties['diffuse_map'] = Texture(tex_file=tex_file[index])
+
+    # prepare textured mesh
+    meshes = []
+    for mesh in scene.mMeshes:
+        mat = scene.mMaterials[mesh.mMaterialIndex].properties
+        assert mat['diffuse_map'], "Trying to map using a textureless material"
+        attributes = [mesh.mVertices, mesh.mTextureCoords[0], mesh.mNormals]
+        mesh = TexturedPhongMesh(shader, mat['diffuse_map'], attributes, mesh.mFaces,
+                                 k_d=k_d, k_a=k_a, k_s=k_s, s=s)
+        meshes.append(mesh)
+
+    size = sum((mesh.mNumFaces for mesh in scene.mMeshes))
+    # print('Loaded %s\t(%d meshes, %d faces)' % (file, len(meshes), size))
+    return meshes
+
 
 # --------------------------------------------------------
 # Builder functions
@@ -166,21 +205,19 @@ def load_textured_phong_mesh_skinned(file, shader, tex_file, k_a, k_d, k_s, s, d
 def add_characters(viewer, shader):
     # Knight Run
     keyframe_knight_node = KeyFrameControlNode(
-        translate_keys={0: vec(20, camera.cameraPositionXZ() + 3, 80), 9.9: vec(20, camera.cameraPositionXZ() + 3, 80), 10: vec(20, camera.cameraPositionXZ() + 3, 80), 
-                    # 40: vec(20, camera.cameraPositionXZ() + 3, 80), 50: vec(-50, camera.cameraPositionXZ() + 3, 80)
-                    }, 
-        rotate_keys={0: quaternion_from_axis_angle(axis=(0, 1, 0), degrees=90), 9.9: quaternion_from_axis_angle(axis=(0, 1, 0), degrees=90), 10: quaternion_from_axis_angle(axis=(0, 1, 0), degrees=90), 
-                    # 40: quaternion_from_axis_angle(axis=(0, 1, 0), degrees=90), 50: quaternion_from_axis_angle(axis=(0, 1, 0), degrees=90)
+        translate_keys={
+               0.1: vec(0, camera.cameraPositionXZ() + 3, 30),
+                10: vec(-50, camera.cameraPositionXZ() + 3, 30)},
+        rotate_keys={ 0.1: quaternion_from_axis_angle(axis=(0, 1, 0), degrees=90), 10: quaternion_from_axis_angle(axis=(0, 1, 0), degrees=90),
                     },
-        scale_keys={ 0: 0,  9.9: 0.5, 10: 0.5,
-                    # 40: 0.5, 50: 0.5
+        scale_keys={ 0: 0.5,  9.9: 0.5, 10: 0,
                     },
     )
     size = 0.05
     knight_node = Node(
         transform=translate(0, 0, 10) @ scale(size, size, size))
-    mesh_list = load_textured_phong_mesh_skinned("./../resources/characters/Knight/Knight_run.fbx", shader=shader,
-                                                 tex_file="./../resources/characters/Knight/texture/knight_text_newAO.png",
+    mesh_list = load_textured_phong_mesh_skinned("./../resources/characters/Rogalic/Rogalic_run.fbx", shader=shader,
+                                                 tex_file="./../resources/characters/Rogalic/Texture/Rogalik_texture.psd",
                                                  k_a=(.4, .4, .4),
                                                  k_d=(.6, .6, .6),
                                                  k_s=(.1, .1, .1),
@@ -195,15 +232,15 @@ def add_characters(viewer, shader):
 
     # Knight Attack
     keyframe_knight_node = KeyFrameControlNode(
-        translate_keys={ 40: vec(20, camera.cameraPositionXZ() + 3, 80)},
-        rotate_keys={40: quaternion_from_axis_angle(axis=(0, 1, 0), degrees=90)},
-        scale_keys={  40: 0.5},
+        translate_keys={ 10: vec(0, camera.cameraPositionXZ() + 3, 30)},
+        rotate_keys={10: quaternion_from_axis_angle(axis=(0, 1, 0), degrees=90)},
+        scale_keys={ 10: 0, 10.1: 0.5, 17.9: 0.5, 18: 0},
     )
     size = 0.05
     knight_node = Node(
         transform=translate(0, 0, 10) @ scale(size, size, size))
-    mesh_list = load_textured_phong_mesh_skinned("./../resources/characters/Knight/Knight_attack_1.fbx", shader=shader,
-                                                 tex_file="./../resources/characters/Knight/texture/knight_text_newAO.png",
+    mesh_list = load_textured_phong_mesh_skinned("./../resources/characters/Rogalic/Rogalic_attack_1.fbx", shader=shader,
+                                                 tex_file="./../resources/characters/Rogalic/Texture/Rogalik_texture.psd",
                                                  k_a=(.4, .4, .4),
                                                  k_d=(.6, .6, .6),
                                                  k_s=(.1, .1, .1),
@@ -216,6 +253,98 @@ def add_characters(viewer, shader):
     keyframe_knight_node.add(knight_node)
     viewer.add(keyframe_knight_node)
 
+    # Knight Victory
+    keyframe_knight_node = KeyFrameControlNode(
+        translate_keys={ 17: vec(5, camera.cameraPositionXZ() + 3, 30)},
+        rotate_keys={0: quaternion_from_axis_angle(axis=(0, 1, 0), degrees=190)},
+        scale_keys={ 17.9: 0, 18: 0.5, 25: 0.5},
+    )
+    size = 0.05
+    knight_node = Node(
+        transform=translate(0, 0, 10) @ scale(size, size, size))
+    mesh_list = load_textured_phong_mesh_skinned("./../resources/characters/Rogalic/Rogalic_victory.fbx", shader=shader,
+                                                 tex_file="./../resources/characters/Rogalic/Texture/Rogalik_texture.psd",
+                                                 k_a=(.4, .4, .4),
+                                                 k_d=(.6, .6, .6),
+                                                 k_s=(.1, .1, .1),
+                                                 s=4, delay=1.0
+                                                 )
+
+    for mesh in mesh_list:
+        print(mesh)
+        knight_node.add(mesh)
+    keyframe_knight_node.add(knight_node)
+    viewer.add(keyframe_knight_node)
+
+    # Golem Idle
+    keyframe_golem_node = KeyFrameControlNode(
+        translate_keys={
+               10: vec(15, camera.cameraPositionXZ() + 3, 30)},
+        rotate_keys={10: quaternion_from_axis_angle(axis=(0, 1, 0), degrees=-90),
+                    },
+        scale_keys={ 0: 0.5,  9.9: 0.5, 10: 0},
+    )
+    size = 0.05
+    golem_node = Node(
+        transform=translate(0, 0, 10) @ scale(size, size, size))
+    mesh_list = load_textured_phong_mesh_skinned("./../resources/characters/Golem/Golem_idle.fbx", shader=shader,
+                                                 tex_file="./../resources/characters/Golem/Texture/Golem.psd",
+                                                 k_a=(.4, .4, .4),
+                                                 k_d=(.6, .6, .6),
+                                                 k_s=(.1, .1, .1),
+                                                 s=4, delay=1.0
+                                                 )
+
+    for mesh in mesh_list:
+        golem_node.add(mesh)
+    keyframe_golem_node.add(golem_node)
+    viewer.add(keyframe_golem_node)
+
+     # Golem Attack
+    keyframe_golem_node = KeyFrameControlNode(
+        translate_keys={ 10: vec(15, camera.cameraPositionXZ() + 3, 30)},
+        rotate_keys={10: quaternion_from_axis_angle(axis=(0, 1, 0), degrees=-90)},
+        scale_keys={ 9.9: 0, 10: 0.5, 17.9: 0.5, 18: 0},
+    )
+    size = 0.05
+    golem_node = Node(
+        transform=translate(0, 0, 10) @ scale(size, size, size))
+    mesh_list = load_textured_phong_mesh_skinned("./../resources/characters/Golem/Golem_attack_1.fbx", shader=shader,
+                                                 tex_file="./../resources/characters/Golem/Texture/Golem.psd",
+                                                 k_a=(.4, .4, .4),
+                                                 k_d=(.6, .6, .6),
+                                                 k_s=(.1, .1, .1),
+                                                 s=4, delay=1.0
+                                                 )
+
+    for mesh in mesh_list:
+        golem_node.add(mesh)
+    keyframe_golem_node.add(golem_node)
+    viewer.add(keyframe_golem_node)
+
+     # Golem Death
+    keyframe_golem_node = KeyFrameControlNode(
+        translate_keys={ 17: vec(15, camera.cameraPositionXZ() + 3, 30)},
+        rotate_keys={17: quaternion_from_axis_angle(axis=(0, 1, 0), degrees=-90)},
+        # scale_keys={ 0: 0.5},
+        scale_keys={ 17.9: 0, 18: 0.5, 19.1: 0.5, 19.2: 0},
+    )
+    size = 0.05
+    golem_node = Node(
+        transform=translate(0, 0, 10) @ scale(size, size, size))
+    mesh_list = load_textured_phong_mesh_skinned("./../resources/characters/Golem/Golem_death.fbx", shader=shader,
+                                                 tex_file="./../resources/characters/Golem/Texture/Golem.psd",
+                                                 k_a=(.4, .4, .4),
+                                                 k_d=(.6, .6, .6),
+                                                 k_s=(.1, .1, .1),
+                                                 s=4, delay=1.0
+                                                 )
+
+    for mesh in mesh_list:
+        print(mesh)
+        golem_node.add(mesh)
+    keyframe_golem_node.add(golem_node)
+    viewer.add(keyframe_golem_node)
 
 def add_animations(viewer, shader):
     def circular_motion(r=30, x_offset=0, y_offset=0, z_offset=0, direction=0):
@@ -229,61 +358,133 @@ def add_animations(viewer, shader):
         x = x_offset + (r * math.cos(math.radians(angle)))
         y = y_offset + (np.absolute(10 * math.sin(math.radians(angle))))
         z = z_offset + (r * math.sin(math.radians(angle)))
-        transformation = translate(0, 10, 100) @ rotate((1, 0, 1), -90) 
-        return transformation
-
-    def circular_motion_one(r=30, x_offset=0, y_offset=0, z_offset=0, direction=0):
-        speed = 20
-        angle = (glfw.get_time() * speed) % 360
-
-        # Reverse the direction of rotation
-        if direction == 1:
-            rev_angle = 360 - angle
-            angle = rev_angle
-        x = x_offset + (r * math.cos(math.radians(angle)))
-        y = y_offset + (np.absolute(10 * math.sin(math.radians(angle))))
-        z = z_offset + (r * math.sin(math.radians(angle)))
-        transformation = translate(50, 10, 100) @ rotate((0, 1, 1), 90)
-        return transformation
-        
-    def circular_motion_two(r=30, x_offset=0, y_offset=0, z_offset=0, direction=0):
-        speed = 20
-        angle = (glfw.get_time() * speed) % 360
-
-        # Reverse the direction of rotation
-        if direction == 1:
-            rev_angle = 360 - angle
-            angle = rev_angle
-        x = x_offset + (r * math.cos(math.radians(angle)))
-        y = y_offset + (np.absolute(10 * math.sin(math.radians(angle))))
-        z = z_offset + (r * math.sin(math.radians(angle)))
-        # transformation = translate(x, y, z) @ rotate((0, 1, 0), angle) 
-        # transformation = translate(0, 10, 100) @ rotate((1, 0, 0), -90) @ rotate((0, 1, 0), angle) 
-        transformation = translate(x, y, 100) @ rotate((0, 1, 1), 90)  @ rotate((0, 1, 0), 10)
+        transformation = translate(x, camera.cameraPositionXZ() + 40, 150) @ rotate((0, 1, 1), 90)  @ rotate((0, 1, 0), 10) @ rotate((1, 0, 1), 130) @ rotate((1, 0, 1), 180)
         return transformation
         
     # Seagull
-    for i in range(2):
-        radius = int(random.randrange(start=10, stop=100, step=10))
-        x_offset = int(random.randrange(start=0, stop=100, step=5))
-        y_offset = int(random.randrange(start=0, stop=10, step=2))
-        z_offset = int(random.randrange(start=30, stop=50, step=5))
-        direction = int(random.randrange(start=0, stop=2, step=1))
+    radius = int(random.randrange(start=10, stop=100, step=10))
+    x_offset = int(random.randrange(start=0, stop=100, step=5))
+    y_offset = int(random.randrange(start=0, stop=10, step=2))
+    z_offset = int(random.randrange(start=30, stop=50, step=5))
+    direction = int(random.randrange(start=0, stop=2, step=1))
 
-        bird_node = Animation(circular_motion_two,
-                                        radius=radius,
-                                        x_offset=x_offset,
-                                        y_offset=y_offset,
-                                        z_offset=z_offset,
-                                        direction=direction)
-        mesh_list = load_textured_phong_mesh(file="./../resources/Seagull/seagul.FBX", shader=shader,
-                                                tex_file="./../resources/Seagull/texture/gull.png",
-                                                k_a=(.4, .4, .4),
-                                                k_d=(1.2, 1.2, 1.2),
-                                                k_s=(.2, .2, .2),
-                                                s=4
-                                                )
-        for mesh in mesh_list:
-            bird_node.add(mesh)
-        viewer.add(bird_node)
-    
+    bird_node = Animation(circular_motion,
+                                    radius=radius,
+                                    x_offset=x_offset,
+                                    y_offset=y_offset,
+                                    z_offset=z_offset,
+                                    direction=direction)
+    mesh_list = load_textured_phong_mesh(file="./../resources/Seagull/seagul.FBX", shader=shader,
+                                            tex_file="./../resources/Seagull/texture/gull.png",
+                                            k_a=(.4, .4, .4),
+                                            k_d=(1.2, 1.2, 1.2),
+                                            k_s=(.2, .2, .2),
+                                            s=4
+                                            )
+    for mesh in mesh_list:
+        bird_node.add(mesh)
+    viewer.add(bird_node)
+
+def build_tree(viewer, shader):
+    # Pathway trees
+    tex_list = ["./../resources/FantasyWorld/Textures/Nature_Atlas_1.tga"]
+    tree_size = 0.6
+    # for i in range(-70, 100, 40):
+    tree_node = Node(
+        transform=translate(53, camera.cameraPositionXZ() + 3, 50.2) @ scale(tree_size, tree_size, tree_size) @ rotate((1, 0, 0), -90))
+    mesh_list = multi_load_textured(file="./../resources/FantasyWorld/Constructable_Elements/Barrel_02.FBX", shader=shader,
+                                    tex_file=tex_list,
+                                    k_a=(.4, .4, .4),
+                                    k_d=(1.2, 1.2, 1.2),
+                                    k_s=(.2, .2, .2),
+                                    s=4
+                                    )
+    for mesh in mesh_list:
+        tree_node.add(mesh)
+    viewer.add(tree_node)
+
+    tree_node = Node(
+    transform=translate(53, camera.cameraPositionXZ() + 5, 50.2) @ scale(tree_size, tree_size, tree_size) @ rotate((1, 0, 0), -90))
+    mesh_list = multi_load_textured(file="./../resources/FantasyWorld/Constructable_Elements/Barrel_01.FBX", shader=shader,
+                                    tex_file=tex_list,
+                                    k_a=(.4, .4, .4),
+                                    k_d=(1.2, 1.2, 1.2),
+                                    k_s=(.2, .2, .2),
+                                    s=4
+                                    )
+    for mesh in mesh_list:
+        tree_node.add(mesh)
+    viewer.add(tree_node)
+
+
+    tree_size = 0.8
+    # for i in range(-70, 100, 40):
+    tree_node = Node(
+        transform=translate(93, camera.cameraPositionXZ() + 3, 50.2) @ scale(tree_size, tree_size, tree_size) @ rotate((1, 0, 0), -90))
+    mesh_list = multi_load_textured(file="./../resources/FantasyWorld/Constructable_Elements/HouseMushroom.FBX", shader=shader,
+                                    tex_file=tex_list,
+                                    k_a=(.4, .4, .4),
+                                    k_d=(1.2, 1.2, 1.2),
+                                    k_s=(.2, .2, .2),
+                                    s=4
+                                    )
+    for mesh in mesh_list:
+        tree_node.add(mesh)
+    viewer.add(tree_node)
+
+    tree_node = Node(
+    transform=translate(96, camera.cameraPositionXZ() + 5, 50.2) @ scale(tree_size, tree_size, tree_size) @ rotate((1, 0, 0), -90))
+    mesh_list = multi_load_textured(file="./../resources/FantasyWorld/Constructable_Elements/HouseMushroom_Window.FBX", shader=shader,
+                                    tex_file=tex_list,
+                                    k_a=(.4, .4, .4),
+                                    k_d=(1.2, 1.2, 1.2),
+                                    k_s=(.2, .2, .2),
+                                    s=4
+                                    )
+    for mesh in mesh_list:
+        tree_node.add(mesh)
+    viewer.add(tree_node)
+
+
+
+    # HOUSE SMALL IN SCENE  
+    tree_size = 0.4
+    # for i in range(-70, 100, 40):
+    tree_node = Node(
+        transform=translate(53, camera.cameraPositionXZ() + 3, 90.2) @ scale(tree_size, tree_size, tree_size) @ rotate((1, 0, 0), -90))
+    mesh_list = multi_load_textured(file="./../resources/FantasyWorld/Constructable_Elements/HouseMushroom.FBX", shader=shader,
+                                    tex_file=tex_list,
+                                    k_a=(.4, .4, .4),
+                                    k_d=(1.2, 1.2, 1.2),
+                                    k_s=(.2, .2, .2),
+                                    s=4
+                                    )
+    for mesh in mesh_list:
+        tree_node.add(mesh)
+    viewer.add(tree_node)
+
+    tree_node = Node(
+    transform=translate(55, camera.cameraPositionXZ() + 5, 90.2) @ scale(tree_size, tree_size, tree_size) @ rotate((1, 0, 0), -90))
+    mesh_list = multi_load_textured(file="./../resources/FantasyWorld/Constructable_Elements/HouseMushroom_Window.FBX", shader=shader,
+                                    tex_file=tex_list,
+                                    k_a=(.4, .4, .4),
+                                    k_d=(1.2, 1.2, 1.2),
+                                    k_s=(.2, .2, .2),
+                                    s=4
+                                    )
+    for mesh in mesh_list:
+        tree_node.add(mesh)
+    viewer.add(tree_node)
+
+    # tree_node = Node(
+    #     transform=translate(13, camera.cameraPositionXZ() + 3, 40) @ scale(tree_size, tree_size, tree_size) @ rotate((1, 0, 0), -90))
+    # mesh_list = multi_load_textured(file="./../resources/FantasyWorld/Constructable_Elements/TreeStump.FBX", shader=shader,
+    #                                 tex_file=tex_list,
+    #                                 k_a=(.4, .4, .4),
+    #                                 k_d=(1.2, 1.2, 1.2),
+    #                                 k_s=(.2, .2, .2),
+    #                                 s=4
+    #                                 )
+    # for mesh in mesh_list:
+    #     tree_node.add(mesh)
+    # viewer.add(tree_node)
