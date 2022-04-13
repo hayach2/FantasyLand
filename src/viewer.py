@@ -35,8 +35,8 @@ class Viewer(Node):
         glfw.set_window_size_callback(self.win, GL.glViewport(0, 0, *glfw.get_framebuffer_size(self.win)))
 
         # initialize GL by setting viewport and default render characteristics
-        GL.glClearColor(0.1, 0.1, 0.1, 0.1)
-        # GL.glClearColor(0.52, 0.8, 0.91, 0.2)
+        # GL.glClearColor(0.1, 0.1, 0.1, 0.1)
+        GL.glClearColor(0.52, 0.8, 0.91, 0.2)
         GL.glEnable(GL.GL_CULL_FACE)  # backface culling enabled (TP2)
         GL.glEnable(GL.GL_DEPTH_TEST)  # depth test now enabled (TP2)
 

@@ -17,7 +17,6 @@ class SkinnedMesh(Mesh):
     def __init__(self, shader, attribs, bone_nodes, bone_offsets, index=None):
         super().__init__(shader, attribs, index)
 
-        # store skinning data
         self.bone_nodes = bone_nodes
         self.bone_offsets = np.array(bone_offsets, np.float32)
 
@@ -25,7 +24,6 @@ class SkinnedMesh(Mesh):
         """ skinning object draw method """
         GL.glUseProgram(self.shader.glid)
 
-        # bone world transform matrices need to be passed for skinning
         world_transforms = [node.world_transform for node in self.bone_nodes]
         bone_matrix = world_transforms @ self.bone_offsets
         loc = GL.glGetUniformLocation(self.shader.glid, 'bone_matrix')
@@ -45,19 +43,16 @@ class SkinningControlNode(Node):
         # self.loop = loop
         self.time = glfw.get_time()
 
-        # Delay between the animation loop
         self.delay = delay
 
     def draw(self, projection, view, model):
         """ When redraw requested, interpolate our node transform from keys """
         self.time = glfw.get_time()
-        if self.keyframes:  # no keyframe update should happens if no keyframes
+        if self.keyframes: 
             if self.delay is not None:
                 self.time = glfw.get_time() % self.delay
             self.transform = self.keyframes.value(self.time)
 
-        # store world transform for skinned meshes using this node as bone
         self.world_transform = model @ self.transform
 
-        # default node behaviour (call children's draw method)
         super().draw(projection, view, model)

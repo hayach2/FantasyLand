@@ -29,14 +29,10 @@ void main() {
     gl_Position = projection * positionRelativeToCam;
     frag_uv = vec2(uvs.x, uvs.y);
 
-    // compute the vertex position and normal in world or view coordinates
+    // shadow calculation
     w_position =  worldPosition.xyz / worldPosition.w;
 
-    // fragment normal in world coordinates
-    mat3 nit_matrix = transpose(inverse(mat3(model)));
-    w_normal = normalize(nit_matrix * normal);
-
-    // Get the light for all lights' position
+    w_normal = transpose(inverse(mat3(model))) * normal;
     for(int i = 0;i < NUM_LIGHT_SRC; i++)
     {
         to_light_vector[i] = light_position[i] - worldPosition.xyz;
