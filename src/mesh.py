@@ -1,6 +1,5 @@
 import OpenGL.GL as GL
 import numpy as np
-import glfw
 
 from vertexarray import VertexArray
 from node import Node

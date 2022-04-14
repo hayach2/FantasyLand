@@ -1,4 +1,3 @@
-from itertools import cycle
 import glfw
 import OpenGL.GL as GL
 

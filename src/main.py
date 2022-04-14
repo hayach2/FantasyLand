@@ -1,11 +1,6 @@
 #!/usr/bin/env python3
-"""
-Python OpenGL Medieval Project.
-"""
-# Python built-in modules
-import glfw  # lean window system wrapper for OpenGL
 
-# External, non built-in modules
+import glfw
 from viewer import Viewer
 from skybox import Skybox
 from shader import Shader
@@ -14,9 +9,6 @@ from core import add_animation, add_circular_animation, add_objects
 
 
 def main():
-    """ create a window, add scene objects, then run rendering loop """
-
-    # Define all the shaders
     viewer = Viewer(width=1920, height=1080)
     # -------------------------------------------------
     field = [
@@ -39,16 +31,25 @@ def main():
 
     viewer.add(Skybox(field))
 
-    message = """
-    Welcome to our Fantasy World!
+    print("""
+    Hi and welcome to our FantasyLand!
+    
+    Here's how you can navigate our land:
+    
+    W: Move forward
+    S: Move backwards
+    D: Move to the right
+    A: Move to the left
+    UP arrow: Move camera upwards
+    Down arrow: Move camera downwards
+    Right arrow: Move camera to the right
+    Left arrow: Move camera to the left
+    Shift (works with all the buttons): Makes movements of all previous keys faster
+    Spacebar to reset all animations
+    ESC or Q to exit the land
+    
+    """)
 
-    Press SPACEBAR to reset all animations.
-
-    And finally, press ESC or Q to exit the game.
-    """
-    print(message)
-
-    # start rendering loop
     viewer.run()
 
 

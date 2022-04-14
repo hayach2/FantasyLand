@@ -1,6 +1,5 @@
 import numpy as np
 from PIL import Image
-
 from transform import normalized
 from node import Node
 from mesh import Mesh
@@ -11,7 +10,8 @@ class TextureGround(Mesh, Node):
 
 	def __init__(self, shader, heightmapFile):
 		heightmapTexture = np.asarray(Image.open(heightmapFile).convert('RGB'))
-		vertices, textureCoordinates, normals, indices = self.create_attributes(heightmapTexture.shape[0], heightmapTexture)
+		vertices, textureCoordinates, normals, indices = self.create_attributes(heightmapTexture.shape[0],
+		                                                                        heightmapTexture)
 		super().__init__(shader, [vertices, textureCoordinates, normals], indices)
 
 	def create_attributes(self, size, heightmapTexture):
@@ -21,7 +21,8 @@ class TextureGround(Mesh, Node):
 
 		for i in range(0, size):
 			for j in range(0, size):
-				vertices.append([(j / (size - 1)) * 1000, self.get_height(i, j, heightmapTexture), (i / (size - 1)) * 1000])
+				vertices.append(
+					[(j / (size - 1)) * 1000, self.get_height(i, j, heightmapTexture), (i / (size - 1)) * 1000])
 				normals.append(self.calculateNormal(j, i, heightmapTexture))
 				textureCoordinates.append([j / (size - 1), i / (size - 1)])
 
@@ -43,11 +44,8 @@ class TextureGround(Mesh, Node):
 		return vertices, textureCoordinates, normals, indices
 
 	def calculateNormal(self, x, z, hmap_image):
-		height_l = self.get_height(x - 1, z, hmap_image)
-		height_r = self.get_height(x + 1, z, hmap_image)
-		height_d = self.get_height(x, z - 1, hmap_image)
-		height_u = self.get_height(x, z + 1, hmap_image)
-		return normalized(np.array([height_l - height_r, 2.0, height_d - height_u]))
+		return normalized(np.array([self.get_height(x - 1, z, hmap_image) - self.get_height(x + 1, z, hmap_image), 2.0,
+		                            self.get_height(x, z - 1, hmap_image) - self.get_height(x, z + 1, hmap_image)]))
 
 	def get_height(self, x, z, image):
 		if x < 0 or x >= image.shape[0] or z < 0 or z >= image.shape[0]:
