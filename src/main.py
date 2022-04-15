@@ -5,7 +5,7 @@ from viewer import Viewer
 from skybox import Skybox
 from shader import Shader
 from textureground import groundNode
-from core import add_animation, add_circular_animation, add_objects
+from core import add_animation, add_objects
 
 
 def main():
@@ -25,7 +25,6 @@ def main():
 
     add_animation(viewer, shader=skinning_shader)
     add_objects(viewer, shader=phong_shader)
-    add_circular_animation(viewer, shader=phong_shader)
     groundNode(viewer, shader=terrain_shader)
 
 
