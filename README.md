@@ -9,7 +9,6 @@ Haya Charaf Eddine, Mouna Salam
 - Terrain
 - Camera
 - Animation
-- Circular animation
 - Light
 - Hierarchical modelling
 
